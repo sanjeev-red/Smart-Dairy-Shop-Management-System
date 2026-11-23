@@ -1,43 +1,65 @@
-# Fresh Dairy — Smart Dairy Shop Management System
+# Smart Dairy Shop Management System
 
-A responsive dairy, fruit and vegetable storefront with customer accounts, a persistent SQLite database, order tracking, supplier and milk collection tools, and an admin dashboard. UPI is a simulated academic demo only; no real payment is processed.
+A responsive dairy, fruit and vegetable storefront with a React/Vite frontend, Express API, Prisma ORM, and Neon PostgreSQL database. UPI is a simulated academic demo only; no real payment is processed.
 
 ## Stack
-React, Vite, TypeScript, React Router, Lucide, React Hot Toast, Express, Prisma ORM, SQLite, bcrypt.
 
-## Requirements
-Node.js 20.19+ or 22.12+ and npm.
+React, Vite, TypeScript, React Router, Lucide, React Hot Toast, Express, Prisma ORM 6, Prisma PostgreSQL adapter (`pg`), and Neon PostgreSQL.
 
-## First run
-1. Copy `.env.example` to `.env` and set a private `JWT_SECRET`.
-2. Install dependencies: `npm install`
-3. Create/update the local database: `npm run db:push`
-4. Load the demonstration catalog and accounts: `npm run db:seed`
-5. Start frontend and API together: `npm run dev`
-6. Open http://localhost:5173
+## Configure Neon
 
-The API runs at http://localhost:4000. For production frontend assets, run `npm run build`; run the API with `npm run server:dev` or `npm start`.
+The app uses the pooled Neon URL for Express queries and the direct Neon URL for Prisma schema operations:
+
+- `DATABASE_URL`: Neon pooled connection URL (`-pooler` host), used by the API and seed script.
+- `DATABASE_URL_UNPOOLED`: Neon direct connection URL, used by Prisma CLI through `directUrl`.
+- `JWT_SECRET`: a private, long random secret.
+- `CORS_ORIGINS`: comma-separated exact origins allowed to call the API in production.
+- `VITE_API_BASE_URL`: deployed API origin, without a trailing slash. Leave empty for the local Vite proxy.
+
+Copy `.env.example` to `.env` only if needed, then use the Neon-provided values. Do not commit `.env` or other environment files. The repository ignores them.
+
+## Run locally
+
+```powershell
+npm install
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+Open http://localhost:5173. The API runs at http://localhost:4000. `npm run db:push` uses the direct URL and does not force-accept destructive changes. Review any Prisma warning before proceeding.
+
+`npm run db:seed` is safe to repeat: it creates missing categories and products without updating matching existing rows. It also creates the local demonstration accounts, suppliers, milk collection example, and coupon only when those records do not already exist.
+
+## Production build and deployment
+
+```powershell
+npm run build
+npm start
+```
+
+Set `NODE_ENV=production`, `JWT_SECRET`, `PORT`, and `CORS_ORIGINS` in the API host. Build the frontend with `VITE_API_BASE_URL` set to the API origin (or serve `/api` from the same origin). Add the production frontend origin to `CORS_ORIGINS`. The Neon CLI config in `neon.ts` manages Neon branch policy; it does not deploy this Express API or frontend.
 
 ## Demo accounts
+
 - Admin: `admin@freshdairy.local` / `Admin@123`
 - Customer: `customer@freshdairy.local` / `Customer@123`
 
-Change these passwords before using any non-local deployment. Configure `DATABASE_URL` and `JWT_SECRET` in `.env`.
+Change demo passwords before any public deployment.
+
+## Existing SQLite file
+
+`prisma/dev.db` is preserved as-is and ignored by Git. Changing Prisma to PostgreSQL does not copy that SQLite data into Neon. The Neon schema and seed setup operate on the database identified by the root `.env` URLs; any SQLite data import should be a separate, reviewed migration.
 
 ## Included
-- Product catalog with search, category and price filters, sort, product details, availability and freshness labels.
-- Guest basket stored in the browser and signed-in basket stored in SQLite; stock-checked order creation and inventory movement records.
-- Customer registration/login, order history, delivery progress, quick reorder, wishlist, account and reviews after delivery.
-- Recommendations based on previous order categories with best-rated catalog fallback for new customers.
-- Admin summary, product/stock management, order status management, supplier records, milk collection, low stock watch and CSV sales export.
-- Responsive design, accessible controls, optional dark theme, coupon `FRESH10` (10% off subtotal above ₹299), free delivery over ₹499.
+
+- Product catalog with search, category and price filters, sorting, product details, availability and freshness labels.
+- Guest basket in browser storage and signed-in basket in PostgreSQL; stock-checked order creation and inventory movement records.
+- Customer registration/login, order history, delivery progress, quick reorder, wishlist, and account pages.
+- Category-based recommendations with a best-rated fallback for new customers.
+- Admin summary, product/stock management, order status management, suppliers, milk collection, low-stock watch, and CSV sales export.
+- Responsive design, optional dark theme, coupon `FRESH10` (10% off subtotal above ₹299), and free delivery over ₹499.
 
 ## Notes
-Product photographs are loaded from Unsplash image URLs and require an internet connection in the browser. The supplied brief referenced two design screenshots, but no image attachments were available in the provided attachment folder; the interface follows the brief's green and cream palette. This academic application uses signed bearer tokens and local SQLite; use HTTPS, a managed secrets store, and a production session strategy before deployment. Passwords are bcrypt-hashed. UPI is simulated.
 
-## Screenshots
-Add project screenshots here after launching the app.
-
-## Future enhancements
-PostgreSQL deployment, production-grade session rotation, real delivery partner integration, image upload storage, editable user profiles and addresses, richer sales charts, seasonal deal scheduling, and automated expiry alerts.
-
+Product photographs load from Unsplash URLs and require an internet connection in the browser. Passwords are bcrypt-hashed. API authentication uses signed bearer tokens. UPI is simulated.

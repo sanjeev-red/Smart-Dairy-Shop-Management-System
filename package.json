@@ -4,19 +4,47 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "dev": "npm run db:generate && concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "tsx watch server/index.ts",
     "client:dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit -p tsconfig.app.json && vite build",
-    "start": "tsx server/index.ts",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
+    "build": "npm run db:generate && tsc --noEmit -p tsconfig.app.json && tsc -p tsconfig.server.json && vite build",
+    "start": "node dist-server/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push && prisma generate",
+    "db:seed": "npm run db:generate && tsx prisma/seed.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0", "bcryptjs": "^3.0.2", "cors": "^2.8.5", "express": "^5.1.0", "lucide-react": "^0.468.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-hot-toast": "^2.6.0", "react-router-dom": "^7.9.5", "recharts": "^3.3.0", "zod": "^4.1.12"
+    "@neon/config": "^1.14.6",
+    "@neon/env": "^2.1.9",
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "pg": "^8.23.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.9.5",
+    "recharts": "^3.3.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6", "@types/cors": "^2.8.19", "@types/express": "^5.0.5", "@types/node": "^24.10.0", "@types/react": "^19.2.2", "@types/react-dom": "^19.2.2", "@vitejs/plugin-react": "^5.1.1", "concurrently": "^9.2.1", "prisma": "^6.19.0", "tailwindcss": "^4.1.17", "tsx": "^4.20.6", "typescript": "~5.9.3", "vite": "^7.2.2"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "prisma": "^6.19.0",
+    "tailwindcss": "^4.1.17",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.2"
   }
 }

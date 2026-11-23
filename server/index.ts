@@ -1,5 +1,12 @@
-import express,{Request,Response,NextFunction} from 'express'; import cors from 'cors'; import {PrismaClient} from '@prisma/client'; import bcrypt from 'bcryptjs'; import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto'; import {z} from 'zod';
-const app=express(),db=new PrismaClient(),port=Number(process.env.PORT||4000),secret=process.env.JWT_SECRET||'local-development-secret-change-me'; app.use(cors());app.use(express.json({limit:'1mb'}));
+import 'dotenv/config';
+import express,{Request,Response,NextFunction} from 'express'; import cors from 'cors'; import bcrypt from 'bcryptjs'; import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto'; import {z} from 'zod';
+import { createDatabaseClient } from './db.ts';
+const app=express(),port=Number(process.env.PORT||4000),production=process.env.NODE_ENV==='production';
+if(production&&!process.env.JWT_SECRET)throw new Error('JWT_SECRET must be set in production.');
+const db=createDatabaseClient(),secret=process.env.JWT_SECRET||'local-development-only-secret';
+const allowedOrigins=new Set((process.env.CORS_ORIGINS||'').split(',').map(origin=>origin.trim()).filter(Boolean));
+app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.has(origin)||(!production&&/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)))return callback(null,true);return callback(new Error('Origin is not allowed by CORS.'))}}));
+app.use(express.json({limit:'1mb'}));
 type Authed=Request&{user?:{id:number;role:string}};
 function token(user:{id:number;role:string}){const body=Buffer.from(JSON.stringify({...user,exp:Date.now()+7*86400000})).toString('base64url');return body+'.'+createHmac('sha256',secret).update(body).digest('base64url')}
 function auth(role?:string){return (req:Authed,res:Response,next:NextFunction)=>{try{const t=req.headers.authorization?.replace(/^Bearer /,'')||'', [body,sig]=t.split('.'),expected=createHmac('sha256',secret).update(body).digest();if(!body||!sig||!timingSafeEqual(expected,Buffer.from(sig,'base64url')))throw Error();const v=JSON.parse(Buffer.from(body,'base64url').toString());if(v.exp<Date.now()||(role&&v.role!==role))throw Error();req.user={id:v.id,role:v.role};next()}catch{return res.status(401).json({error:'Please sign in with an authorized account.'})}}}
@@ -31,6 +38,6 @@ app.post('/api/admin/suppliers',auth('ADMIN'),wrap(async(req,res)=>res.status(20
 app.get('/api/admin/milk',auth('ADMIN'),wrap(async(_req,res)=>res.json(await db.milkCollection.findMany({include:{supplier:true},orderBy:{date:'desc'}}))));
 app.post('/api/admin/milk',auth('ADMIN'),wrap(async(req,res)=>{const d=z.object({supplierId:z.number(),litres:z.number().positive(),milkType:z.string(),rate:z.number().positive(),paid:z.boolean().optional()}).parse(req.body);return res.status(201).json(await db.milkCollection.create({data:{...d,total:d.litres*d.rate}}))}));
 app.get('/api/admin/reports.csv',auth('ADMIN'),wrap(async(_req,res)=>{const rows=await db.order.findMany({include:{items:true},orderBy:{createdAt:'desc'}}),csv=['Order,Date,Status,Items,Total,Payment',...rows.map(o=>[o.orderCode,o.createdAt.toISOString(),o.status,o.items.reduce((s,i)=>s+i.quantity,0),o.total,o.paymentMode].join(','))].join('\n');res.type('text/csv').attachment('fresh-dairy-sales.csv').send(csv)}));
-app.use((err:unknown,_req:Request,res:Response,_next:NextFunction)=>{console.error(err);if(err instanceof z.ZodError)return res.status(400).json({error:'Please check the information and try again.',details:err.issues.map(x=>x.message)});return res.status(500).json({error:'Something went wrong. Please try again.'})});
+app.use((err:unknown,_req:Request,res:Response,_next:NextFunction)=>{if(err instanceof Error&&err.message==='Origin is not allowed by CORS.')return res.status(403).json({error:'Origin is not allowed.'});console.error(err);if(err instanceof z.ZodError)return res.status(400).json({error:'Please check the information and try again.',details:err.issues.map(x=>x.message)});return res.status(500).json({error:'Something went wrong. Please try again.'})});
 app.listen(port,()=>console.log(`Fresh Dairy API running at http://localhost:${port}`));
 

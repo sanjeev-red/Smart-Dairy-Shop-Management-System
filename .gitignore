@@ -2,5 +2,9 @@ node_modules/
 dist/
 dist-server/
 .env
+.env.*
+!.env.example
 prisma/*.db
 prisma/*.db-journal
+.neon
+server/generated/
